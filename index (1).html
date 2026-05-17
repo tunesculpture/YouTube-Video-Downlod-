@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>YT DROP — YouTube Downloader</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --card: #161616;
+    --border: #222222;
+    --red: #ff2d2d;
+    --red-dim: #ff2d2d22;
+    --red-glow: #ff2d2d66;
+    --white: #f5f5f5;
+    --muted: #666666;
+    --success: #00e676;
+    --warn: #ffc400;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--white);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* Noise overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.4;
+  }
+
+  /* Red glow orb */
+  body::after {
+    content: '';
+    position: fixed;
+    top: -200px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, #ff2d2d18 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 0 24px 80px;
+  }
+
+  /* HEADER */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 32px 0 0;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 24px;
+    margin-bottom: 64px;
+  }
+
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2rem;
+    letter-spacing: 0.12em;
+    color: var(--white);
+  }
+
+  .logo span {
+    color: var(--red);
+  }
+
+  .badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    color: var(--red);
+    border: 1px solid var(--red);
+    padding: 4px 10px;
+    border-radius: 2px;
+    text-transform: uppercase;
+  }
+
+  /* HERO */
+  .hero {
+    text-align: center;
+    margin-bottom: 56px;
+    animation: fadeUp 0.6s ease both;
+  }
+
+  .hero h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(3.5rem, 10vw, 6.5rem);
+    line-height: 0.9;
+    letter-spacing: 0.05em;
+    color: var(--white);
+    margin-bottom: 20px;
+  }
+
+  .hero h1 em {
+    color: var(--red);
+    font-style: normal;
+    display: block;
+  }
+
+  .hero p {
+    font-size: 1rem;
+    color: var(--muted);
+    font-weight: 300;
+    letter-spacing: 0.02em;
+    max-width: 400px;
+    margin: 0 auto;
+    line-height: 1.7;
+  }
+
+  /* INPUT CARD */
+  .input-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 32px;
+    margin-bottom: 32px;
+    animation: fadeUp 0.6s 0.15s ease both;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .input-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--red), transparent);
+    opacity: 0.6;
+  }
+
+  .input-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    display: block;
+  }
+
+  .url-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .url-input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--white);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    padding: 14px 16px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .url-input::placeholder { color: var(--muted); }
+
+  .url-input:focus {
+    border-color: var(--red);
+    box-shadow: 0 0 0 3px var(--red-dim);
+  }
+
+  .paste-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    padding: 0 18px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .paste-btn:hover { border-color: var(--red); color: var(--red); }
+
+  /* FORMAT GRID */
+  .format-section { margin-bottom: 24px; }
+
+  .format-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .format-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    padding: 11px 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+    letter-spacing: 0.05em;
+  }
+
+  .format-btn:hover { border-color: #333; color: var(--white); }
+
+  .format-btn.active {
+    background: var(--red-dim);
+    border-color: var(--red);
+    color: var(--red);
+  }
+
+  /* QUALITY ROW */
+  .quality-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+
+  .quality-chip {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    padding: 6px 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .quality-chip:hover { border-color: #333; color: var(--white); }
+
+  .quality-chip.active {
+    background: var(--red-dim);
+    border-color: var(--red);
+    color: var(--red);
+  }
+
+  /* MAIN DOWNLOAD BUTTON */
+  .dl-btn {
+    width: 100%;
+    background: var(--red);
+    border: none;
+    border-radius: 2px;
+    color: var(--white);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.4rem;
+    letter-spacing: 0.15em;
+    padding: 18px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .dl-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .dl-btn:hover { background: #e02020; box-shadow: 0 8px 32px var(--red-glow); transform: translateY(-1px); }
+  .dl-btn:hover::before { opacity: 1; }
+  .dl-btn:active { transform: translateY(0); }
+  .dl-btn:disabled { background: #333; color: #666; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  /* RESULT PANEL */
+  .result-panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 28px 32px;
+    margin-bottom: 32px;
+    display: none;
+    animation: fadeUp 0.4s ease both;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .result-panel.show { display: block; }
+
+  .result-panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--success), transparent);
+    opacity: 0.6;
+  }
+
+  .result-thumb {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    margin-bottom: 24px;
+  }
+
+  .thumb-img {
+    width: 140px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 2px;
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+    background: var(--surface);
+  }
+
+  .thumb-info { flex: 1; min-width: 0; }
+
+  .video-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--white);
+    margin-bottom: 6px;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .video-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+
+  .dl-links { display: flex; flex-direction: column; gap: 8px; }
+
+  .dl-link-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--white);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+  }
+
+  .dl-link-btn:hover { border-color: var(--red); color: var(--red); background: var(--red-dim); }
+
+  .dl-link-btn .arrow { font-size: 1rem; }
+
+  /* ERROR */
+  .error-box {
+    background: #1a0000;
+    border: 1px solid #440000;
+    border-radius: 2px;
+    padding: 14px 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    color: #ff6b6b;
+    display: none;
+    margin-top: 16px;
+  }
+
+  .error-box.show { display: block; }
+
+  /* LOADING */
+  .loader {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    margin-top: 16px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+  }
+
+  .loader.show { display: flex; }
+
+  .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid var(--border);
+    border-top-color: var(--red);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+  }
+
+  /* HOW TO */
+  .how-section {
+    margin-top: 48px;
+    animation: fadeUp 0.6s 0.3s ease both;
+  }
+
+  .section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.3em;
+    color: var(--red);
+    text-transform: uppercase;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  .step {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 24px 20px;
+    position: relative;
+  }
+
+  .step-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 3rem;
+    color: var(--border);
+    line-height: 1;
+    margin-bottom: 12px;
+  }
+
+  .step h3 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--white);
+    margin-bottom: 6px;
+  }
+
+  .step p {
+    font-size: 0.8rem;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* BACKEND SECTION */
+  .backend-section {
+    margin-top: 48px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 32px;
+    animation: fadeUp 0.6s 0.45s ease both;
+  }
+
+  .backend-section h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.6rem;
+    letter-spacing: 0.1em;
+    color: var(--white);
+    margin-bottom: 8px;
+  }
+
+  .backend-section .sub {
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin-bottom: 24px;
+  }
+
+  .code-block {
+    background: #0d0d0d;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    color: #ccc;
+    overflow-x: auto;
+    line-height: 1.7;
+    margin-bottom: 16px;
+    position: relative;
+  }
+
+  .code-block .comment { color: #555; }
+  .code-block .keyword { color: #ff7b7b; }
+  .code-block .string { color: #a8e6a3; }
+  .code-block .fn { color: #7eb8f7; }
+
+  .copy-btn {
+    position: absolute;
+    top: 12px; right: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .copy-btn:hover { color: var(--white); border-color: #444; }
+
+  .tab-row {
+    display: flex;
+    gap: 0;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tab {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    padding: 10px 18px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.2s;
+  }
+
+  .tab:hover { color: var(--white); }
+  .tab.active { color: var(--red); border-bottom-color: var(--red); }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* FOOTER */
+  footer {
+    margin-top: 64px;
+    border-top: 1px solid var(--border);
+    padding-top: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--muted);
+    font-size: 0.75rem;
+  }
+
+  footer .logo-sm {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.1rem;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+  }
+
+  footer .logo-sm span { color: var(--red); }
+
+  /* ANIMATIONS */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* RESPONSIVE */
+  @media (max-width: 600px) {
+    .steps { grid-template-columns: 1fr; }
+    .format-grid { grid-template-columns: repeat(2, 1fr); }
+    .url-row { flex-direction: column; }
+    .paste-btn { padding: 12px; }
+    .result-thumb { flex-direction: column; }
+    .thumb-img { width: 100%; height: 160px; }
+    footer { flex-direction: column; gap: 12px; text-align: center; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo">YT <span>DROP</span></div>
+    <div class="badge">v1.0 · Free</div>
+  </header>
+
+  <!-- HERO -->
+  <div class="hero">
+    <h1>Download<em>Any Video</em></h1>
+    <p>Paste a YouTube link, pick your format and quality — done. No signup, no limits.</p>
+  </div>
+
+  <!-- INPUT CARD -->
+  <div class="input-card">
+    <span class="input-label">YouTube URL</span>
+    <div class="url-row">
+      <input class="url-input" id="urlInput" type="url" placeholder="https://youtube.com/watch?v=..." />
+      <button class="paste-btn" onclick="pasteURL()">PASTE</button>
+    </div>
+
+    <div class="format-section">
+      <span class="input-label">Format</span>
+      <div class="format-grid">
+        <button class="format-btn active" data-format="mp4" onclick="selectFormat(this)">MP4 · Video</button>
+        <button class="format-btn" data-format="webm" onclick="selectFormat(this)">WEBM · Video</button>
+        <button class="format-btn" data-format="mp3" onclick="selectFormat(this)">MP3 · Audio</button>
+        <button class="format-btn" data-format="m4a" onclick="selectFormat(this)">M4A · Audio</button>
+        <button class="format-btn" data-format="wav" onclick="selectFormat(this)">WAV · Audio</button>
+        <button class="format-btn" data-format="ogg" onclick="selectFormat(this)">OGG · Audio</button>
+      </div>
+    </div>
+
+    <div class="format-section" id="qualitySection">
+      <span class="input-label">Quality</span>
+      <div class="quality-row">
+        <button class="quality-chip" onclick="selectQuality(this)">2160p · 4K</button>
+        <button class="quality-chip" onclick="selectQuality(this)">1080p · FHD</button>
+        <button class="quality-chip active" onclick="selectQuality(this)">720p · HD</button>
+        <button class="quality-chip" onclick="selectQuality(this)">480p</button>
+        <button class="quality-chip" onclick="selectQuality(this)">360p</button>
+        <button class="quality-chip" onclick="selectQuality(this)">Best</button>
+      </div>
+    </div>
+
+    <button class="dl-btn" id="dlBtn" onclick="fetchVideo()">GET DOWNLOAD LINK</button>
+
+    <div class="loader" id="loader">
+      <div class="spinner"></div>
+      <span>FETCHING VIDEO INFO...</span>
+    </div>
+
+    <div class="error-box" id="errorBox"></div>
+  </div>
+
+  <!-- RESULT PANEL -->
+  <div class="result-panel" id="resultPanel">
+    <div class="result-thumb">
+      <img class="thumb-img" id="thumbImg" src="" alt="thumbnail" />
+      <div class="thumb-info">
+        <div class="video-title" id="videoTitle">—</div>
+        <div class="video-meta" id="videoMeta">—</div>
+      </div>
+    </div>
+    <div class="dl-links" id="dlLinks"></div>
+  </div>
+
+  <!-- HOW TO -->
+  <div class="how-section">
+    <div class="section-label">HOW IT WORKS</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <h3>Paste the Link</h3>
+        <p>Copy any YouTube video URL and paste it into the input field above.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <h3>Pick Format</h3>
+        <p>Choose MP4, WEBM for video — or MP3, M4A, WAV for audio extraction.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <h3>Download</h3>
+        <p>Click the button and your file starts downloading immediately.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- BACKEND CODE -->
+  <div class="backend-section">
+    <h2>Backend Setup</h2>
+    <p class="sub">Run this Python FastAPI backend on your server to power the downloader.</p>
+
+    <div class="tab-row">
+      <div class="tab active" onclick="switchTab(this,'install')">INSTALL</div>
+      <div class="tab" onclick="switchTab(this,'server')">SERVER CODE</div>
+      <div class="tab" onclick="switchTab(this,'run')">RUN</div>
+    </div>
+
+    <div class="tab-content active" id="tab-install">
+      <div class="code-block" style="position:relative">
+        <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+        <span class="comment"># Install Python dependencies</span><br/>
+        pip install fastapi uvicorn yt-dlp python-multipart<br/><br/>
+        <span class="comment"># Install ffmpeg (Ubuntu/Debian)</span><br/>
+        sudo apt update && sudo apt install -y ffmpeg<br/><br/>
+        <span class="comment"># Install ffmpeg (macOS)</span><br/>
+        brew install ffmpeg
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-server">
+      <div class="code-block" style="position:relative">
+        <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+        <span class="comment"># main.py — Your FastAPI backend</span><br/><br/>
+        <span class="keyword">from</span> fastapi <span class="keyword">import</span> FastAPI, HTTPException<br/>
+        <span class="keyword">from</span> fastapi.middleware.cors <span class="keyword">import</span> CORSMiddleware<br/>
+        <span class="keyword">from</span> fastapi.responses <span class="keyword">import</span> FileResponse<br/>
+        <span class="keyword">from</span> pydantic <span class="keyword">import</span> BaseModel<br/>
+        <span class="keyword">import</span> yt_dlp, os, uuid<br/><br/>
+        app = FastAPI()<br/><br/>
+        app.add_middleware(CORSMiddleware,<br/>
+        &nbsp;&nbsp;allow_origins=[<span class="string">"*"</span>],<br/>
+        &nbsp;&nbsp;allow_methods=[<span class="string">"*"</span>],<br/>
+        &nbsp;&nbsp;allow_headers=[<span class="string">"*"</span>])<br/><br/>
+        <span class="keyword">class</span> <span class="fn">DownloadRequest</span>(BaseModel):<br/>
+        &nbsp;&nbsp;url: str<br/>
+        &nbsp;&nbsp;format: str = <span class="string">"mp4"</span><br/>
+        &nbsp;&nbsp;quality: str = <span class="string">"720p"</span><br/><br/>
+        <span class="fn">@app.get</span>(<span class="string">"/info"</span>)<br/>
+        <span class="keyword">async def</span> <span class="fn">get_info</span>(url: str):<br/>
+        &nbsp;&nbsp;<span class="keyword">with</span> yt_dlp.YoutubeDL({}) <span class="keyword">as</span> ydl:<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;info = ydl.extract_info(url, download=<span class="keyword">False</span>)<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">return</span> {<span class="string">"title"</span>: info[<span class="string">"title"</span>],<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="string">"thumbnail"</span>: info[<span class="string">"thumbnail"</span>],<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="string">"duration"</span>: info[<span class="string">"duration"</span>],<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="string">"channel"</span>: info[<span class="string">"uploader"</span>]}<br/><br/>
+        <span class="fn">@app.post</span>(<span class="string">"/download"</span>)<br/>
+        <span class="keyword">async def</span> <span class="fn">download_video</span>(req: DownloadRequest):<br/>
+        &nbsp;&nbsp;filename = f<span class="string">"/tmp/{uuid.uuid4()}.%(ext)s"</span><br/>
+        &nbsp;&nbsp;opts = {<span class="string">"outtmpl"</span>: filename,<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="string">"format"</span>: <span class="string">"bestaudio"</span> <span class="keyword">if</span> req.format <span class="keyword">in</span> [<span class="string">"mp3"</span>,<span class="string">"m4a"</span>,<span class="string">"wav"</span>,<span class="string">"ogg"</span>] <span class="keyword">else</span> <span class="string">"bestvideo+bestaudio"</span>}<br/>
+        &nbsp;&nbsp;<span class="keyword">if</span> req.format == <span class="string">"mp3"</span>:<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;opts[<span class="string">"postprocessors"</span>] = [{<span class="string">"key"</span>: <span class="string">"FFmpegExtractAudio"</span>, <span class="string">"preferredcodec"</span>: <span class="string">"mp3"</span>}]<br/>
+        &nbsp;&nbsp;<span class="keyword">with</span> yt_dlp.YoutubeDL(opts) <span class="keyword">as</span> ydl:<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;ydl.download([req.url])<br/>
+        &nbsp;&nbsp;<span class="keyword">return</span> FileResponse(path, filename=<span class="string">"download"</span>)
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-run">
+      <div class="code-block" style="position:relative">
+        <button class="copy-btn" onclick="copyCode(this)">COPY</button>
+        <span class="comment"># Start the backend server</span><br/>
+        uvicorn main:app --host 0.0.0.0 --port 8000 --reload<br/><br/>
+        <span class="comment"># API will be available at:</span><br/>
+        GET &nbsp;http://localhost:8000/info?url=YOUTUBE_URL<br/>
+        POST http://localhost:8000/download<br/><br/>
+        <span class="comment"># Test it</span><br/>
+        curl "http://localhost:8000/info?url=https://youtube.com/watch?v=dQw4w9WgXcQ"
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="logo-sm">YT <span>DROP</span></div>
+    <div>For personal & educational use only · Respect YouTube ToS</div>
+  </footer>
+
+</div>
+
+<script>
+  let selectedFormat = 'mp4';
+  let selectedQuality = '720p';
+
+  function selectFormat(btn) {
+    document.querySelectorAll('.format-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedFormat = btn.dataset.format;
+    const audioFormats = ['mp3','m4a','wav','ogg'];
+    document.getElementById('qualitySection').style.display =
+      audioFormats.includes(selectedFormat) ? 'none' : 'block';
+  }
+
+  function selectQuality(btn) {
+    document.querySelectorAll('.quality-chip').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedQuality = btn.textContent.split('·')[0].trim();
+  }
+
+  async function pasteURL() {
+    try {
+      const text = await navigator.clipboard.readText();
+      document.getElementById('urlInput').value = text;
+    } catch {
+      document.getElementById('urlInput').focus();
+    }
+  }
+
+  function showError(msg) {
+    const box = document.getElementById('errorBox');
+    box.textContent = '⚠ ' + msg;
+    box.classList.add('show');
+  }
+
+  function hideError() {
+    document.getElementById('errorBox').classList.remove('show');
+  }
+
+  function setLoading(state) {
+    document.getElementById('loader').classList.toggle('show', state);
+    document.getElementById('dlBtn').disabled = state;
+  }
+
+  async function fetchVideo() {
+    const url = document.getElementById('urlInput').value.trim();
+    hideError();
+    document.getElementById('resultPanel').classList.remove('show');
+
+    if (!url) { showError('Please enter a YouTube URL.'); return; }
+    if (!url.includes('youtube.com') && !url.includes('youtu.be')) {
+      showError('Please enter a valid YouTube URL.'); return;
+    }
+
+    setLoading(true);
+
+    const API = 'https://yt-rzcf.onrender.com';
+
+    try {
+      // Step 1: Fetch video info
+      const infoRes = await fetch(`${API}/info?url=${encodeURIComponent(url)}`);
+      if (!infoRes.ok) {
+        const err = await infoRes.json();
+        throw new Error(err.detail || 'Could not fetch video info.');
+      }
+      const data = await infoRes.json();
+
+      setLoading(false);
+
+      document.getElementById('thumbImg').src = data.thumbnail;
+      document.getElementById('videoTitle').textContent = data.title;
+      document.getElementById('videoMeta').textContent =
+        (data.channel || 'Unknown') + ' · ' + (data.duration || '');
+
+      const links = document.getElementById('dlLinks');
+      links.innerHTML = '';
+
+      const audioFormats = ['mp3','m4a','wav','ogg'];
+      const isAudio = audioFormats.includes(selectedFormat);
+
+      const fmts = isAudio
+        ? [{ label: selectedFormat.toUpperCase() + ' · Audio', format: selectedFormat, quality: 'best' }]
+        : [
+            { label: 'MP4 · ' + selectedQuality, format: 'mp4', quality: selectedQuality },
+            { label: 'MP4 · 480p (smaller)', format: 'mp4', quality: '480p' },
+          ];
+
+      fmts.forEach(f => {
+        const btn = document.createElement('button');
+        btn.className = 'dl-link-btn';
+        btn.innerHTML = `<span>${f.label}</span><span class="arrow">↓</span>`;
+        btn.onclick = async () => {
+          btn.innerHTML = `<span>Downloading...</span><span class="spinner" style="width:14px;height:14px;border-width:2px"></span>`;
+          btn.style.pointerEvents = 'none';
+          try {
+            const dlRes = await fetch(`${API}/download`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url, format: f.format, quality: f.quality })
+            });
+            if (!dlRes.ok) {
+              const e = await dlRes.json();
+              throw new Error(e.detail || 'Download failed.');
+            }
+            const blob = await dlRes.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = data.title + '.' + f.format;
+            a.click();
+            URL.revokeObjectURL(blobUrl);
+            btn.innerHTML = `<span>✓ Downloaded!</span><span class="arrow">↓</span>`;
+            btn.style.color = 'var(--success)';
+          } catch (err) {
+            btn.innerHTML = `<span>⚠ ${err.message}</span><span>↺</span>`;
+            btn.style.pointerEvents = 'auto';
+            btn.style.color = '#ff6b6b';
+          }
+        };
+        links.appendChild(btn);
+      });
+
+      document.getElementById('resultPanel').classList.add('show');
+
+    } catch (err) {
+      setLoading(false);
+      showError(err.message || 'Something went wrong. The server may be waking up — try again in 30 seconds.');
+    }
+  }
+
+  function extractID(url) {
+    const m = url.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    return m ? m[1] : 'dQw4w9WgXcQ';
+  }
+
+  function switchTab(tab, id) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-' + id).classList.add('active');
+  }
+
+  function copyCode(btn) {
+    const block = btn.parentElement;
+    const text = block.innerText.replace('COPY\n','');
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = 'COPIED!';
+      setTimeout(() => btn.textContent = 'COPY', 2000);
+    });
+  }
+</script>
+</body>
+</html>
